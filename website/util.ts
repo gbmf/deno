@@ -2,31 +2,53 @@
 // All rights reserved. MIT License.
 
 import * as ts from "typescript";
+import * as types from "./types";
+
+const mapSeparator = Symbol();
 
 export class One2ManyMap<KeyType, ValueType> {
-  private map = new Map<KeyType, ValueType[]>();
+  private data = new Map<KeyType, (ValueType | typeof mapSeparator)[]>();
 
   add(key: KeyType, value: ValueType) {
-    if (!this.map.has(key)){
-      this.map.set(key, []);
+    if (!this.data.has(key)) {
+      this.data.set(key, []);
     }
-    const array = this.map.get(key);
-    array.push(value);
+    this.data.get(key).push(value);
   }
 
-  removeKey(key: KeyType) {
-    this.map.delete(key);
+  addSeparator() {
+    this.data.forEach(array => {
+      array.push(mapSeparator);
+    });
   }
 
-  has(key: KeyType) {
-    return this.map.has(key);
+  clearKeyAfterLastSeparator(key: KeyType) {
+    if (!this.data.has(key)) return;
+    const array = this.data.get(key);
+    let index = array.lastIndexOf(mapSeparator);
+    if (index < 0) index = 0;
+    array.splice(index);
+    if (array.length === 0) this.data.delete(key);
   }
 
-  forEach(key: KeyType, cb: (value: ValueType) => void) {
-    if (this.has(key)) {
-      const array = this.map.get(key);
-      array.forEach(cb);
+  forEachAfterLastSeparator(key: KeyType, cb: (v: ValueType) => void) {
+    if (!this.data.has(key)) return;
+    const array = this.data.get(key);
+    let i = array.length;
+    while (true) {
+      const data = array[--i];
+      if (data === mapSeparator) break;
+      cb(data);
+      if (i == 0) break;
     }
+  }
+
+  removeLastSeparator() {
+    this.data.forEach(array => {
+      const index = array.lastIndexOf(mapSeparator);
+      if (index < 0) return;
+      array.splice(index, 1);
+    });
   }
 }
 
